@@ -21,6 +21,9 @@
     
     un/bunchify provide dictionary conversion; Bunches can also be
     converted via Bunch.to/fromDict().
+
+    
+
 """
 
 __version__ = '1.0.1'
@@ -28,7 +31,6 @@ VERSION = tuple(map(int, __version__.split('.')))
 
 __all__ = ('Bunch', 'bunchify','unbunchify',)
 
-from .python3_compat import *
 
 class Bunch(dict):
     """ A dictionary that provides attribute-style access.
@@ -48,13 +50,13 @@ class Bunch(dict):
         
         A Bunch is a subclass of dict; it supports all the methods a dict does...
         
-        >>> sorted(b.keys())
+        >>> b.keys()
         ['foo', 'hello']
         
         Including update()...
         
         >>> b.update({ 'ponies': 'are pretty!' }, hello=42)
-        >>> print (repr(b))
+        >>> print repr(b)
         Bunch(foo=Bunch(lol=True), hello=42, ponies='are pretty!')
         
         As well as iteration...
@@ -82,15 +84,9 @@ class Bunch(dict):
             >>> b.hello = 'hai'
             >>> 'hello' in b
             True
-            >>> b[None] = 123
-            >>> None in b
-            True
-            >>> b[False] = 456
-            >>> False in b
-            True
         """
         try:
-            return dict.__contains__(self, k) or hasattr(self, k)
+            return hasattr(self, k) or dict.__contains__(self, k)
         except:
             return False
     
@@ -196,15 +192,15 @@ class Bunch(dict):
         """ Invertible* string-form of a Bunch.
             
             >>> b = Bunch(foo=Bunch(lol=True), hello=42, ponies='are pretty!')
-            >>> print (repr(b))
+            >>> print repr(b)
             Bunch(foo=Bunch(lol=True), hello=42, ponies='are pretty!')
             >>> eval(repr(b))
             Bunch(foo=Bunch(lol=True), hello=42, ponies='are pretty!')
             
             (*) Invertible so long as collection contents are each repr-invertible.
         """
-        keys = list(iterkeys(self))
-        keys.sort()
+        keys = sorted(self.keys())
+        #keys.sort()
         args = ', '.join(['%s=%r' % (key, self[key]) for key in keys])
         return '%s(%s)' % (self.__class__.__name__, args)
     
@@ -249,7 +245,7 @@ def bunchify(x):
         nb. As dicts are not hashable, they cannot be nested in sets/frozensets.
     """
     if isinstance(x, dict):
-        return Bunch( (k, bunchify(v)) for k,v in iteritems(x) )
+        return Bunch( (k, bunchify(v)) for k,v in x.items() )
     elif isinstance(x, (list, tuple)):
         return type(x)( bunchify(v) for v in x )
     else:
@@ -274,7 +270,7 @@ def unbunchify(x):
         nb. As dicts are not hashable, they cannot be nested in sets/frozensets.
     """
     if isinstance(x, dict):
-        return dict( (k, unbunchify(v)) for k,v in iteritems(x) )
+        return dict( (k, unbunchify(v)) for k,v in x.items() )
     elif isinstance(x, (list, tuple)):
         return type(x)( unbunchify(v) for v in x )
     else:
@@ -356,11 +352,11 @@ try:
             >>> yaml.dump(b, default_flow_style=True)
             '!bunch.Bunch {foo: [bar, !bunch.Bunch {lol: true}], hello: 42}\\n'
         """
-        return dumper.represent_mapping(u('!bunch.Bunch'), data)
+        return dumper.represent_mapping(u'!bunch.Bunch', data)
     
     
-    yaml.add_constructor(u('!bunch'), from_yaml)
-    yaml.add_constructor(u('!bunch.Bunch'), from_yaml)
+    yaml.add_constructor(u'!bunch', from_yaml)
+    yaml.add_constructor(u'!bunch.Bunch', from_yaml)
     
     SafeRepresenter.add_representer(Bunch, to_yaml_safe)
     SafeRepresenter.add_multi_representer(Bunch, to_yaml_safe)
@@ -395,7 +391,7 @@ try:
     def fromYAML(*args, **kwargs):
         return bunchify( yaml.load(*args, **kwargs) )
     
-    Bunch.toYAML = toYAML
+    Bunch.toYAML = Bunch.__str__ = toYAML
     Bunch.fromYAML = staticmethod(fromYAML)
     
 except ImportError:
@@ -405,4 +401,3 @@ except ImportError:
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
-
